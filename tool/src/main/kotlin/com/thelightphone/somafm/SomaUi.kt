@@ -1,17 +1,20 @@
 package com.thelightphone.somafm
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.thelightphone.sdk.ui.LightBarButton
 import com.thelightphone.sdk.ui.LightIcons
 import com.thelightphone.sdk.ui.LightScrollView
@@ -51,7 +54,7 @@ internal fun SomaScaffold(
     }
 }
 
-internal fun refreshButton(onClick: () -> Unit) = LightBarButton.LightIcon(icon = LightIcons.REFRESH, onClick = onClick)
+internal fun settingsButton(onClick: () -> Unit) = LightBarButton.LightIcon(icon = LightIcons.SETTINGS, onClick = onClick)
 
 @Composable
 internal fun MessageText(text: String) {
@@ -125,5 +128,17 @@ internal fun SectionHeader(text: String) {
         text = text,
         variant = LightTextVariant.Subheading,
         modifier = Modifier.padding(top = 0.75f.gridUnitsAsDp(), bottom = 0.25f.gridUnitsAsDp()),
+    )
+}
+
+/** A thin full-width rule separating sections of a list. */
+@Composable
+internal fun SectionRule() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 0.75f.gridUnitsAsDp())
+            .height(1.dp)
+            .background(LightThemeTokens.colors.contentSecondary),
     )
 }

@@ -124,7 +124,7 @@ class StationScreen(
         ) {
             LightScrollView(modifier = Modifier.padding(horizontal = 1f.gridUnitsAsDp())) {
                 if (channel.description.isNotBlank()) MessageLine(channel.description)
-                channel.summaryLine().takeIf { it.isNotBlank() }?.let { MessageLine(it) }
+                channel.genre.takeIf { it.isNotBlank() }?.let { MessageLine(it) }
 
                 NowPlaying(uiState.songs)
 

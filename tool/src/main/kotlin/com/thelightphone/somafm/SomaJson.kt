@@ -7,8 +7,8 @@ import kotlinx.serialization.json.Json
 internal val somaJson = Json {
     ignoreUnknownKeys = true
     explicitNulls = false
-    // `listeners` and `date` arrive as JSON strings ("152"); lenient mode also
-    // accepts them as bare numbers should the feed ever change.
+    // `date` arrives as a JSON string ("1790364641"); lenient mode also accepts
+    // a bare number should the feed ever change.
     isLenient = true
 }
 
@@ -24,7 +24,6 @@ internal data class ChannelDto(
     val description: String = "",
     val dj: String = "",
     val genre: String = "",
-    val listeners: String = "",
     val lastPlaying: String = "",
     val playlists: List<PlaylistDto> = emptyList(),
 )
@@ -58,7 +57,6 @@ internal fun parseChannels(text: String): List<Channel> =
             dj = dto.dj,
             // Genres come pipe-separated ("ambient|electronic").
             genre = dto.genre.split('|').filter { it.isNotBlank() }.joinToString(", "),
-            listeners = dto.listeners.trim().toIntOrNull() ?: 0,
             lastPlaying = dto.lastPlaying,
             playlists = dto.playlists.map { Playlist(url = it.url, format = it.format, quality = it.quality) },
         )

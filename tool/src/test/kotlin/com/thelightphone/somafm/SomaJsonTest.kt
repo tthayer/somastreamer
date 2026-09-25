@@ -13,22 +13,20 @@ class SomaJsonTest {
         requireNotNull(javaClass.classLoader?.getResource(name)) { "missing fixture $name" }.readText()
 
     @Test
-    fun `parses channels, splitting pipe-separated genres and string listener counts`() {
+    fun `parses channels, splitting pipe-separated genres`() {
         val channels = parseChannels(fixture("channels.json")).associateBy { it.id }
         assertEquals(setOf("beatblender", "dronezone", "groovesalad"), channels.keys)
 
         val grooveSalad = channels.getValue("groovesalad")
         assertEquals("Groove Salad", grooveSalad.title)
         assertEquals("ambient, electronic", grooveSalad.genre)
-        assertEquals(2268, grooveSalad.listeners)
         assertEquals(4, grooveSalad.playlists.size)
     }
 
     @Test
-    fun `tolerates missing fields and numeric listener counts`() {
-        val channels = parseChannels("""{"channels":[{"id":"x","listeners":12,"extra":true}]}""")
+    fun `tolerates missing and unknown fields`() {
+        val channels = parseChannels("""{"channels":[{"id":"x","listeners":"12","extra":true}]}""")
         assertEquals("x", channels.single().title)
-        assertEquals(12, channels.single().listeners)
         assertTrue(channels.single().playlists.isEmpty())
     }
 
@@ -77,7 +75,7 @@ class SomaJsonTest {
 
     @Test
     fun `falls back to any playlist when the tier is missing`() {
-        val mp3Only = Channel("x", "X", "", "", "", 0, "", listOf(Playlist("https://a/x.pls", "mp3", "highest")))
+        val mp3Only = Channel("x", "X", "", "", "", "", listOf(Playlist("https://a/x.pls", "mp3", "highest")))
         assertEquals("https://a/x.pls", mp3Only.playlistFor(StreamQuality.Low)?.url)
         assertNull(mp3Only.copy(playlists = emptyList()).playlistFor(StreamQuality.High))
     }

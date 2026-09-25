@@ -5,8 +5,8 @@ import kotlin.test.assertEquals
 
 class SomaFormattingTest {
 
-    private fun channel(id: String, title: String, genre: String = "", listeners: Int = 0) =
-        Channel(id, title, "", "", genre, listeners, "", emptyList())
+    private fun channel(id: String, title: String) =
+        Channel(id, title, "", "", "", "", emptyList())
 
     @Test
     fun `formats play age compactly`() {
@@ -17,14 +17,6 @@ class SomaFormattingTest {
         assertEquals("4m", formatAgo(now - 4 * 60 - 5, now))
         assertEquals("2h", formatAgo(now - 2 * 3_600, now))
         assertEquals("3d", formatAgo(now - 3 * 86_400, now))
-    }
-
-    @Test
-    fun `summary line drops missing parts`() {
-        assertEquals("ambient · 12 listening", channel("a", "A", "ambient", 12).summaryLine())
-        assertEquals("ambient", channel("a", "A", "ambient").summaryLine())
-        assertEquals("12 listening", channel("a", "A", listeners = 12).summaryLine())
-        assertEquals("", channel("a", "A").summaryLine())
     }
 
     @Test

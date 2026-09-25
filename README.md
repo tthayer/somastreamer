@@ -32,7 +32,8 @@ somafm-app/
 | `SomaApi.kt` | Ktor client for the SomaFM feeds: channel list, recent songs, `.pls` resolution |
 | `SomaJson.kt` | Response DTOs, `.pls` parsing, and picking a playlist for a stream quality |
 | `RadioPlayer.kt` | Process-level engine over a **detached** `LightAudioPlayer`: tune, pause, stop, mirror fallback |
-| `HomeScreen.kt` | Entry screen: now playing, favorites, all stations, stream quality |
+| `HomeScreen.kt` | Entry screen: now playing, favorites, all stations; settings button in the top bar |
+| `SettingsScreen.kt` | Stream quality and reloading the station list |
 | `StationScreen.kt` | A station: description, current track, play/pause/stop, favorite, recently played |
 | `SomaPreferences.kt` | DataStore: quality, favorites, and the last-tuned station |
 

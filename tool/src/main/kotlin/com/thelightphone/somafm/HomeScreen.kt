@@ -37,8 +37,8 @@ class HomeScreenViewModel(
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
-        // Favorites and quality can change on the station screen; the channel
-        // list only loads once (the refresh button reloads it).
+        // Favorites and quality can change on the station and settings screens;
+        // the channel list only loads once (Settings > Reload stations reloads it).
         loadSettings()
         if (_uiState.value.channels !is LoadState.Ready) refresh()
     }
@@ -49,12 +49,6 @@ class HomeScreenViewModel(
             val channels = withApi { it.listChannels() }.toLoadState("Could not load SomaFM stations.")
             _uiState.value = _uiState.value.copy(channels = channels)
         }
-    }
-
-    fun cycleQuality() {
-        val next = _uiState.value.quality.next()
-        _uiState.value = _uiState.value.copy(quality = next)
-        viewModelScope.launch(Dispatchers.IO) { saveQuality(dataStore, next) }
     }
 
     private fun loadSettings() {
@@ -94,7 +88,7 @@ class HomeScreen(private val sealedActivity: SealedLightActivity) : LightScreen<
         val uiState by viewModel.uiState.collectAsState()
         val radio by RadioPlayer.state.collectAsState()
 
-        SomaScaffold(title = "SomaFM", onBack = null, rightButton = refreshButton { viewModel.refresh() }) {
+        SomaScaffold(title = "SomaFM", onBack = null, rightButton = settingsButton(::openSettings)) {
             val channels = (uiState.channels as? LoadState.Ready)?.value.orEmpty()
             val station = radio.station
             LightScrollView(modifier = Modifier.padding(horizontal = 1f.gridUnitsAsDp())) {
@@ -105,6 +99,7 @@ class HomeScreen(private val sealedActivity: SealedLightActivity) : LightScreen<
                         detail = listOf(station.title, radio.status.label()).filter { it.isNotBlank() }.joinToString(" · "),
                         onClick = tunedChannel?.let { channel -> { openStation(channel, uiState.quality) } },
                     )
+                    SectionRule()
                 }
 
                 when (val state = uiState.channels) {
@@ -115,18 +110,12 @@ class HomeScreen(private val sealedActivity: SealedLightActivity) : LightScreen<
                         if (favorites.isNotEmpty()) {
                             SectionHeader("Favorites")
                             favorites.forEach { ChannelRow(it, uiState.quality) }
+                            SectionRule()
                         }
                         SectionHeader(if (favorites.isEmpty()) "Stations" else "All stations")
                         others.forEach { ChannelRow(it, uiState.quality) }
                     }
                 }
-
-                SectionHeader("Settings")
-                SomaRow(
-                    title = "Stream quality",
-                    detail = "${uiState.quality.label} · tap to change",
-                    onClick = viewModel::cycleQuality,
-                )
             }
         }
     }
@@ -135,9 +124,13 @@ class HomeScreen(private val sealedActivity: SealedLightActivity) : LightScreen<
     private fun ChannelRow(channel: Channel, quality: StreamQuality) {
         SomaRow(
             title = channel.title,
-            detail = channel.summaryLine().ifBlank { null },
+            detail = channel.genre.ifBlank { null },
             onClick = { openStation(channel, quality) },
         )
+    }
+
+    private fun openSettings() {
+        navigateTo(screenFactory = ::SettingsScreen) { reload -> if (reload) viewModel.refresh() }
     }
 
     private fun openStation(channel: Channel, quality: StreamQuality) {

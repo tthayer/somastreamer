@@ -7,7 +7,6 @@ data class Channel(
     val description: String,
     val dj: String,
     val genre: String,
-    val listeners: Int,
     val lastPlaying: String,
     val playlists: List<Playlist>,
 )

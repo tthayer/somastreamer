@@ -1,12 +1,5 @@
 package com.thelightphone.somafm
 
-/** "Ambient, electronic · 152 listening", dropping whichever half is missing. */
-internal fun Channel.summaryLine(): String =
-    listOfNotNull(
-        genre.takeIf { it.isNotBlank() },
-        listeners.takeIf { it > 0 }?.let { "$it listening" },
-    ).joinToString(" · ")
-
 /** "Artist - Title", or whichever half is present. */
 internal fun Song.displayLine(): String =
     listOf(artist, title).filter { it.isNotBlank() }.joinToString(" - ")
