@@ -1,4 +1,4 @@
-# somafm-app
+# light-somafm
 
 A standalone [Light Phone III](https://www.thelightphone.com/) tool for listening
 to [SomaFM](https://somafm.com/), the listener-supported, commercial-free internet
@@ -15,7 +15,7 @@ into Light's tool build and review pipeline.
 ## Layout
 
 ```
-somafm-app/
+light-somafm/
 ├── light-sdk/            # git submodule → tthayer/light-sdk (pinned commit)
 ├── tool/                 # the ONLY dev-owned module
 │   ├── lighttool.toml    # tool id, label, version, permissions, capabilities
@@ -66,7 +66,7 @@ stale buffer. **Stop** ends the detached session.
 Requires JDK 17 and an Android SDK (`sdk.dir` in `local.properties`).
 
 ```bash
-git clone --recurse-submodules <this repo>
+git clone --recurse-submodules git@github.com:tthayer/light-somafm.git
 ./gradlew :tool:testDebugUnitTest :tool:assembleDebug
 # → tool/build/outputs/apk/debug/tool-debug.apk
 ```

@@ -54,7 +54,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "somafm-app"
+rootProject.name = "light-somafm"
 
 // The `light.sdk` Gradle plugin lives in the submodule and is contributed as
 // an included build (matches the SDK monorepo's own `includeBuild("plugin")`).
