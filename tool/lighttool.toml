@@ -1,0 +1,17 @@
+[tool]
+id = "com.thelightphone.somafm"
+label = "SomaFM"
+versionCode = 1
+versionName = "0.1.0"
+orientation = "portrait"
+# INTERNET + ACCESS_NETWORK_STATE: fetches the SomaFM channel list, playlists,
+# and now-playing data, and streams the audio itself.
+permissions = [
+    "android.permission.INTERNET",
+    "android.permission.ACCESS_NETWORK_STATE",
+]
+# detached-audio: the radio keeps playing after the tool is closed. The
+# capability contributes FOREGROUND_SERVICE(_MEDIA_PLAYBACK) itself.
+capabilities = ["detached-audio"]
+# com.lightos on real hardware; com.thelightphone.sdk.emulator on the emulator.
+serverPackage = "com.lightos"
