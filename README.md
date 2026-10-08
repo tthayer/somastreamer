@@ -12,6 +12,8 @@ SDK**, so it drops straight into Light's tool build and review pipeline.
 > API, which is closed to third parties. If you enjoy the stations, consider
 > [supporting SomaFM](https://somafm.com/support/).
 
+<img src="docs/station.png" alt="SomaStreamer's station screen on a Light Phone III: cliqhop idm playing, with the current track and recently played list" width="360">
+
 ## Layout
 
 ```
