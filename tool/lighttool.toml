@@ -1,8 +1,8 @@
 [tool]
 id = "io.github.tthayer.somastreamer"
 label = "SomaStreamer"
-versionCode = 2
-versionName = "0.2.0"
+versionCode = 3
+versionName = "0.2.1"
 orientation = "portrait"
 # INTERNET + ACCESS_NETWORK_STATE: fetches SomaFM stream playlists, reads
 # now-playing titles from the streams, and streams the audio itself.
