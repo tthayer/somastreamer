@@ -1,13 +1,11 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
-/** A SomaFM station, as listed by `channels.json`. */
+/** A SomaFM station, from the bundled [SOMA_STATIONS] list. */
 data class Channel(
     val id: String,
     val title: String,
     val description: String,
-    val dj: String,
     val genre: String,
-    val lastPlaying: String,
     val playlists: List<Playlist>,
 )
 
@@ -18,12 +16,32 @@ data class Playlist(
     val quality: String,
 )
 
-/** A track from `songs/{id}.json`; [playedAt] is epoch seconds. */
+/** A track heard on a station's stream; [playedAt] is when it was first seen, in epoch seconds. */
 data class Song(
     val title: String,
     val artist: String,
-    val album: String,
     val playedAt: Long?,
+)
+
+/**
+ * Builds a [Channel] from one row of the generated station list. [kbps] are the
+ * AAC bitrates SomaFM publishes as `https://somafm.com/{id}{kbps}.pls`; 130 is
+ * SomaFM's name for its 128k AAC stream.
+ */
+internal fun station(id: String, title: String, genre: String, description: String, vararg kbps: Int) = Channel(
+    id = id,
+    title = title,
+    description = description,
+    genre = genre.split('/').filter { it.isNotBlank() }.joinToString(", "),
+    playlists = kbps.toList().mapNotNull { rate ->
+        val quality = when (rate) {
+            130 -> "highest"
+            64 -> "high"
+            32 -> "low"
+            else -> return@mapNotNull null
+        }
+        Playlist(url = "https://somafm.com/$id$rate.pls", format = "aac", quality = quality)
+    },
 )
 
 /**

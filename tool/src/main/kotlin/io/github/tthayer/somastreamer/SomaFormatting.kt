@@ -1,4 +1,4 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
 /** "Artist - Title", or whichever half is present. */
 internal fun Song.displayLine(): String =

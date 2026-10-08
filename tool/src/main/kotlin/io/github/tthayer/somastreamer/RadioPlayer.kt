@@ -1,4 +1,4 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
 import android.util.Log
 import androidx.datastore.core.DataStore
@@ -116,6 +116,8 @@ object RadioPlayer {
         val engine = player ?: return
         val station = TunedStation(id = channel.id, title = channel.title)
         tuneJob?.cancel()
+        // Recently played means "since you tuned in", so a fresh tune starts a fresh list.
+        if (intent.value.station?.id != channel.id) SongLog.clear(channel.id)
         intent.value = Intent(station = station, wantsPlay = true)
         tuneJob = scope.launch {
             val playlist = channel.playlistFor(quality)

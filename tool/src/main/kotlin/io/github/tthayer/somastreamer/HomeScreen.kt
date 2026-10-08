@@ -1,4 +1,4 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -23,7 +23,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 data class HomeUiState(
-    val channels: LoadState<List<Channel>> = LoadState.Loading,
+    val channels: List<Channel> = SOMA_STATIONS,
     val favorites: Set<String> = emptySet(),
     val quality: StreamQuality = StreamQuality.Default,
 )
@@ -37,18 +37,8 @@ class HomeScreenViewModel(
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
-        // Favorites and quality can change on the station and settings screens;
-        // the channel list only loads once (Settings > Reload stations reloads it).
+        // Favorites and quality can change on the station and settings screens.
         loadSettings()
-        if (_uiState.value.channels !is LoadState.Ready) refresh()
-    }
-
-    fun refresh() {
-        _uiState.value = _uiState.value.copy(channels = LoadState.Loading)
-        viewModelScope.launch(Dispatchers.IO) {
-            val channels = withApi { it.listChannels() }.toLoadState("Could not load SomaFM stations.")
-            _uiState.value = _uiState.value.copy(channels = channels)
-        }
     }
 
     private fun loadSettings() {
@@ -88,8 +78,8 @@ class HomeScreen(private val sealedActivity: SealedLightActivity) : LightScreen<
         val uiState by viewModel.uiState.collectAsState()
         val radio by RadioPlayer.state.collectAsState()
 
-        SomaScaffold(title = "SomaFM", onBack = null, rightButton = settingsButton(::openSettings)) {
-            val channels = (uiState.channels as? LoadState.Ready)?.value.orEmpty()
+        SomaScaffold(title = "SomaStreamer", onBack = null, rightButton = settingsButton(::openSettings)) {
+            val channels = uiState.channels
             val station = radio.station
             LightScrollView(modifier = Modifier.padding(horizontal = 1f.gridUnitsAsDp())) {
                 if (station != null) {
@@ -102,20 +92,14 @@ class HomeScreen(private val sealedActivity: SealedLightActivity) : LightScreen<
                     SectionRule()
                 }
 
-                when (val state = uiState.channels) {
-                    is LoadState.Loading -> SomaRow(title = "Loading stations…")
-                    is LoadState.Failed -> SomaRow(title = state.message, detail = "Tap to retry", onClick = viewModel::refresh)
-                    is LoadState.Ready -> {
-                        val (favorites, others) = sortChannels(state.value, uiState.favorites)
-                        if (favorites.isNotEmpty()) {
-                            SectionHeader("Favorites")
-                            favorites.forEach { ChannelRow(it, uiState.quality) }
-                            SectionRule()
-                        }
-                        SectionHeader(if (favorites.isEmpty()) "Stations" else "All stations")
-                        others.forEach { ChannelRow(it, uiState.quality) }
-                    }
+                val (favorites, others) = sortChannels(channels, uiState.favorites)
+                if (favorites.isNotEmpty()) {
+                    SectionHeader("Favorites")
+                    favorites.forEach { ChannelRow(it, uiState.quality) }
+                    SectionRule()
                 }
+                SectionHeader(if (favorites.isEmpty()) "Stations" else "All stations")
+                others.forEach { ChannelRow(it, uiState.quality) }
             }
         }
     }
@@ -130,7 +114,7 @@ class HomeScreen(private val sealedActivity: SealedLightActivity) : LightScreen<
     }
 
     private fun openSettings() {
-        navigateTo(screenFactory = ::SettingsScreen) { reload -> if (reload) viewModel.refresh() }
+        navigateTo(screenFactory = ::SettingsScreen)
     }
 
     private fun openStation(channel: Channel, quality: StreamQuality) {

@@ -1,4 +1,4 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 class SomaFormattingTest {
 
     private fun channel(id: String, title: String) =
-        Channel(id, title, "", "", "", "", emptyList())
+        Channel(id, title, "", "", emptyList())
 
     @Test
     fun `formats play age compactly`() {
@@ -21,8 +21,8 @@ class SomaFormattingTest {
 
     @Test
     fun `song line joins artist and title`() {
-        assertEquals("Bistro Boy - Waves Of Sorrow", Song("Waves Of Sorrow", "Bistro Boy", "", null).displayLine())
-        assertEquals("Waves Of Sorrow", Song("Waves Of Sorrow", "", "", null).displayLine())
+        assertEquals("Bistro Boy - Waves Of Sorrow", Song("Waves Of Sorrow", "Bistro Boy", null).displayLine())
+        assertEquals("Waves Of Sorrow", Song("Waves Of Sorrow", "", null).displayLine())
     }
 
     @Test

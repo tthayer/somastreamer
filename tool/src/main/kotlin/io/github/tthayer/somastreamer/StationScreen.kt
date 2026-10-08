@@ -1,4 +1,4 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -36,13 +36,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-// SomaFM tracks run a few minutes; this keeps "now playing" current without
-// hammering the feed. Polling only runs while the screen is showing.
+// SomaFM tracks run a few minutes. Each check opens the stream and reads ~45 KB
+// up to its first metadata block, so 30s keeps "now playing" current at a
+// small cost. Polling only runs while the screen is showing.
 private const val SONG_POLL_MS = 30_000L
 private const val RECENT_SONGS = 8
 
 data class StationUiState(
-    val songs: LoadState<List<Song>> = LoadState.Loading,
+    /** The track on air: Ready(null) between tracks. */
+    val current: LoadState<Song?> = LoadState.Loading,
     val favorite: Boolean = false,
     val nowSeconds: Long = System.currentTimeMillis() / 1000,
 )
@@ -56,6 +58,9 @@ class StationScreenViewModel(
     val uiState: StateFlow<StationUiState> = _uiState.asStateFlow()
 
     private var poll: Job? = null
+
+    /** Mirror URLs of the station's lowest-bitrate stream, used only to read titles. */
+    private var titleStreams: List<String>? = null
 
     override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
@@ -84,16 +89,32 @@ class StationScreenViewModel(
     }
 
     private suspend fun loadSongs() {
-        val result = withApi { it.recentSongs(channel.id) }
+        val result = withApi { api -> readTitle(api) }
+        val nowSeconds = System.currentTimeMillis() / 1000
+        result.getOrNull()?.let { SongLog.record(channel.id, it, nowSeconds) }
         _uiState.value = _uiState.value.copy(
-            // Keep showing the last good list if a later poll fails.
-            songs = if (result.isFailure && _uiState.value.songs is LoadState.Ready) {
-                _uiState.value.songs
+            // Keep showing the last good title if a later poll fails.
+            current = if (result.isFailure && _uiState.value.current is LoadState.Ready) {
+                _uiState.value.current
             } else {
-                result.toLoadState("Could not load what's playing.")
+                result.toLoadState("Could not read what's playing.")
             },
-            nowSeconds = System.currentTimeMillis() / 1000,
+            nowSeconds = nowSeconds,
         )
+    }
+
+    /** Reads the title from the first mirror that answers. */
+    private suspend fun readTitle(api: SomaApi): Result<Song?> {
+        val streams = titleStreams ?: run {
+            val playlist = channel.playlistFor(StreamQuality.Low)
+                ?: return Result.failure(SomaApiException("That station has no streams right now."))
+            api.resolveStreams(playlist).getOrElse { return Result.failure(it) }.also { titleStreams = it }
+        }
+        var failure: Throwable = SomaApiException("That station has no streams right now.")
+        for (url in streams) {
+            api.streamTitle(url).onSuccess { return Result.success(it) }.onFailure { failure = it }
+        }
+        return Result.failure(failure)
     }
 }
 
@@ -112,6 +133,7 @@ class StationScreen(
     override fun Content() {
         val uiState by viewModel.uiState.collectAsState()
         val radio by RadioPlayer.state.collectAsState()
+        val log by SongLog.songs.collectAsState()
         val tunedHere = radio.station?.id == channel.id
 
         SomaScaffold(
@@ -126,17 +148,22 @@ class StationScreen(
                 if (channel.description.isNotBlank()) MessageLine(channel.description)
                 channel.genre.takeIf { it.isNotBlank() }?.let { MessageLine(it) }
 
-                NowPlaying(uiState.songs)
+                NowPlaying(uiState.current)
 
                 Controls(radio = radio, tunedHere = tunedHere)
 
-                val songs = (uiState.songs as? LoadState.Ready)?.value.orEmpty()
-                if (songs.size > 1) {
+                // The log's newest entry is the track on air unless the station
+                // has since gone to a break; either way it's shown above.
+                val onAir = (uiState.current as? LoadState.Ready)?.value
+                val recent = log[channel.id].orEmpty().let { songs ->
+                    val latest = songs.firstOrNull()
+                    if (onAir != null && latest?.title == onAir.title && latest.artist == onAir.artist) songs.drop(1) else songs
+                }
+                if (recent.isNotEmpty()) {
                     SectionHeader("Recently played")
-                    songs.drop(1).take(RECENT_SONGS).forEach { song ->
+                    recent.take(RECENT_SONGS).forEach { song ->
                         SomaRow(
                             title = song.displayLine(),
-                            detail = song.album.ifBlank { null },
                             marker = formatAgo(song.playedAt, uiState.nowSeconds),
                         )
                     }
@@ -156,14 +183,14 @@ class StationScreen(
     }
 
     @Composable
-    private fun NowPlaying(songs: LoadState<List<Song>>) {
+    private fun NowPlaying(onAir: LoadState<Song?>) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 1f.gridUnitsAsDp()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            val current = (songs as? LoadState.Ready)?.value?.firstOrNull()
+            val current = (onAir as? LoadState.Ready)?.value
             when {
                 current != null -> {
                     LightText(
@@ -184,20 +211,10 @@ class StationScreen(
                             modifier = Modifier.padding(top = 0.5f.gridUnitsAsDp()),
                         )
                     }
-                    if (current.album.isNotBlank()) {
-                        LightText(
-                            text = current.album,
-                            variant = LightTextVariant.Detail,
-                            align = TextAlign.Center,
-                            lighten = true,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
                 }
-                songs is LoadState.Failed -> MessageText(songs.message)
-                songs is LoadState.Loading -> MessageText("Loading…")
-                else -> MessageText(channel.lastPlaying)
+                onAir is LoadState.Failed -> MessageText(onAir.message)
+                onAir is LoadState.Loading -> MessageText("Loading…")
+                else -> MessageText("Between tracks")
             }
         }
     }

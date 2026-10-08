@@ -1,4 +1,4 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
@@ -22,12 +22,12 @@ import kotlinx.coroutines.launch
 
 class SettingsScreenViewModel(
     private val dataStore: DataStore<Preferences>,
-) : LightViewModel<Boolean>() {
+) : LightViewModel<Unit>() {
 
     private val _quality = MutableStateFlow(StreamQuality.Default)
     val quality: StateFlow<StreamQuality> = _quality.asStateFlow()
 
-    override fun onScreenShow(screen: SimpleLightScreen<Boolean>) {
+    override fun onScreenShow(screen: SimpleLightScreen<Unit>) {
         super.onScreenShow(screen)
         viewModelScope.launch(Dispatchers.IO) { _quality.value = loadQuality(dataStore) }
     }
@@ -39,8 +39,8 @@ class SettingsScreenViewModel(
     }
 }
 
-/** Tool settings. Returns `true` when the user asked to reload the station list. */
-class SettingsScreen(sealedActivity: SealedLightActivity) : LightScreen<Boolean, SettingsScreenViewModel>(sealedActivity) {
+/** Tool settings, plus a word about where the music comes from. */
+class SettingsScreen(sealedActivity: SealedLightActivity) : LightScreen<Unit, SettingsScreenViewModel>(sealedActivity) {
 
     override val viewModelClass: Class<SettingsScreenViewModel>
         get() = SettingsScreenViewModel::class.java
@@ -51,7 +51,7 @@ class SettingsScreen(sealedActivity: SealedLightActivity) : LightScreen<Boolean,
     override fun Content() {
         val quality by viewModel.quality.collectAsState()
 
-        SomaScaffold(title = "Settings", onBack = { goBack(false) }) {
+        SomaScaffold(title = "Settings", onBack = { goBack(Unit) }) {
             LightScrollView(modifier = Modifier.padding(horizontal = 1f.gridUnitsAsDp())) {
                 SomaRow(
                     title = "Stream quality",
@@ -60,9 +60,8 @@ class SettingsScreen(sealedActivity: SealedLightActivity) : LightScreen<Boolean,
                 )
                 SectionRule()
                 SomaRow(
-                    title = "Reload stations",
-                    detail = "Fetch the latest SomaFM station list",
-                    onClick = { goBack(true) },
+                    title = "About",
+                    detail = "Unofficial player for SomaFM, listener-supported radio. Support them at somafm.com/support",
                 )
             }
         }

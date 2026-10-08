@@ -1,11 +1,11 @@
 [tool]
-id = "com.thelightphone.somafm"
-label = "SomaFM"
+id = "io.github.tthayer.somastreamer"
+label = "SomaStreamer"
 versionCode = 1
 versionName = "0.1.0"
 orientation = "portrait"
-# INTERNET + ACCESS_NETWORK_STATE: fetches the SomaFM channel list, playlists,
-# and now-playing data, and streams the audio itself.
+# INTERNET + ACCESS_NETWORK_STATE: fetches SomaFM stream playlists, reads
+# now-playing titles from the streams, and streams the audio itself.
 permissions = [
     "android.permission.INTERNET",
     "android.permission.ACCESS_NETWORK_STATE",

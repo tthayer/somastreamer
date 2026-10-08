@@ -2,7 +2,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.light.sdk)
 }
@@ -59,7 +58,6 @@ kotlin {
 
 dependencies {
     implementation(project(":sdk:client"))
-    implementation(libs.kotlinx.serialization.json)
     testImplementation(libs.kotlin.test)
     ksp(libs.androidx.room.compiler)
 }

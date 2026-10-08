@@ -1,4 +1,4 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences

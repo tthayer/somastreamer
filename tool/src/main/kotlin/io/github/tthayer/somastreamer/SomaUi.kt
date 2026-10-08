@@ -1,4 +1,4 @@
-package com.thelightphone.somafm
+package io.github.tthayer.somastreamer
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -17,7 +17,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.thelightphone.sdk.ui.LightBarButton
 import com.thelightphone.sdk.ui.LightIcons
-import com.thelightphone.sdk.ui.LightScrollView
 import com.thelightphone.sdk.ui.LightText
 import com.thelightphone.sdk.ui.LightTextVariant
 import com.thelightphone.sdk.ui.LightTheme
@@ -64,27 +63,6 @@ internal fun MessageText(text: String) {
         lighten = true,
         modifier = Modifier.padding(horizontal = 1f.gridUnitsAsDp()),
     )
-}
-
-/** Renders a [LoadState]: loading and failure messages, or [ready] content in a scroll view. */
-@Composable
-internal fun <T> LoadStateContent(
-    state: LoadState<T>,
-    emptyMessage: String,
-    isEmpty: (T) -> Boolean,
-    ready: @Composable ColumnScope.(T) -> Unit,
-) {
-    when (state) {
-        is LoadState.Loading -> MessageText("Loading…")
-        is LoadState.Failed -> MessageText(state.message)
-        is LoadState.Ready -> if (isEmpty(state.value)) {
-            MessageText(emptyMessage)
-        } else {
-            LightScrollView(modifier = Modifier.padding(horizontal = 1f.gridUnitsAsDp())) {
-                ready(state.value)
-            }
-        }
-    }
 }
 
 /** A tappable row: optional fixed-width [marker] column, a title, and an optional detail line. */

@@ -1,4 +1,4 @@
-// Thin root for the standalone SomaFM tool. The SDK library projects and the
+// Thin root for the standalone SomaStreamer tool. The SDK library projects and the
 // tool are configured in settings.gradle.kts; this file only provides the
 // plugin classpath and the `ext` build knobs that the submodule's SDK build
 // scripts read via `rootProject.ext[...]`. Keep these in sync with the pinned
@@ -13,7 +13,7 @@ plugins {
     alias(libs.plugins.ksp) apply false
 }
 
-group = "com.thelightphone"
+group = "io.github.tthayer"
 
 ext["compileSdk"] = 36
 ext["minSdk"] = 34

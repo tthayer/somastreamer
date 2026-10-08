@@ -1,26 +1,28 @@
-# light-somafm
+# SomaStreamer
 
 A standalone [Light Phone III](https://www.thelightphone.com/) tool for listening
 to [SomaFM](https://somafm.com/), the listener-supported, commercial-free internet
 radio stations. You can browse the stations, star your favorites, see what's
-playing and what played recently, and keep listening after you close the tool. It
-is a thin, self-contained repo built against the upstream **Light SDK**, laid out
-like the other standalone tools (music-app, skylight-app) so it drops straight
-into Light's tool build and review pipeline.
+playing and what has played since you tuned in, and keep listening after you close
+the tool. It is a thin, self-contained repo built against the upstream **Light
+SDK**, so it drops straight into Light's tool build and review pipeline.
 
-> **Unofficial.** This tool is not affiliated with SomaFM. It reads SomaFM's public
-> JSON feeds and streams. If you enjoy the stations, consider
+> **Unofficial.** SomaStreamer is not affiliated with SomaFM. It plays the public
+> stream playlists SomaFM publishes for media players, and doesn't use SomaFM's
+> API, which is closed to third parties. If you enjoy the stations, consider
 > [supporting SomaFM](https://somafm.com/support/).
 
 ## Layout
 
 ```
-light-somafm/
-├── light-sdk/            # git submodule → tthayer/light-sdk (pinned commit)
+somastreamer/
+├── light-sdk/            # git submodule → lightphone/light-sdk (pinned commit)
+├── scripts/
+│   └── update-stations.py  # regenerates Stations.kt from somafm.com/listen/
 ├── tool/                 # the ONLY dev-owned module
 │   ├── lighttool.toml    # tool id, label, version, permissions, capabilities
 │   ├── build.gradle.kts
-│   └── src/main/kotlin/com/thelightphone/somafm/**.kt
+│   └── src/main/kotlin/io/github/tthayer/somastreamer/**.kt
 ├── settings.gradle.kts   # grafts the submodule's SDK projects into this build
 ├── build.gradle.kts      # thin root: plugin classpath + ext build knobs
 ├── gradle.properties
@@ -29,11 +31,13 @@ light-somafm/
 
 | File | Role |
 |---|---|
-| `SomaApi.kt` | Ktor client for the SomaFM feeds: channel list, recent songs, `.pls` resolution |
-| `SomaJson.kt` | Response DTOs, `.pls` parsing, and picking a playlist for a stream quality |
+| `Stations.kt` | The bundled station list (generated; don't edit by hand) |
+| `SomaApi.kt` | Ktor client: `.pls` resolution, and reading the current track from a stream |
+| `SomaStreams.kt` | `.pls` parsing, picking a playlist for a stream quality, parsing ICY titles |
+| `SongLog.kt` | Tracks heard on each station since it was tuned, newest first (in memory) |
 | `RadioPlayer.kt` | Process-level engine over a **detached** `LightAudioPlayer`: tune, pause, stop, mirror fallback |
 | `HomeScreen.kt` | Entry screen: now playing, favorites, all stations; settings button in the top bar |
-| `SettingsScreen.kt` | Stream quality and reloading the station list |
+| `SettingsScreen.kt` | Stream quality, and an about line pointing at SomaFM |
 | `StationScreen.kt` | A station: description, current track, play/pause/stop, favorite, recently played |
 | `SomaPreferences.kt` | DataStore: quality, favorites, and the last-tuned station |
 
@@ -41,16 +45,40 @@ light-somafm/
 
 | Feature | Call |
 |---|---|
-| Stations | `GET https://api.somafm.com/channels.json` |
-| Now playing / history | `GET https://somafm.com/songs/{id}.json` (polled every 30s while a station screen is open) |
-| Stream | `GET` the channel's `.pls` for the chosen quality, then play its `File1=` Icecast URL |
+| Stations | None: the list ships with the tool (see below) |
+| Stream | `GET https://somafm.com/{id}{32,64,130}.pls` for the chosen quality, then play its `File1=` Icecast URL |
+| Now playing | Opens the station's 32k stream with `Icy-MetaData: 1`, reads up to the first metadata block (~45 KB), and hangs up. Every 30s while a station screen is open |
 
-Every channel publishes four playlists: `mp3`/`aac` at 128k (`highest`), `aacp` 64k
-(`high`), and `aacp` 32k (`low`). The quality setting (Low 32k / Standard 64k /
-High 128k, Standard by default) picks one of them. The platform player can't read
-`.pls` itself, so the tool resolves it into the mirror URLs (`ice1`, `ice2`, ...).
-If a mirror fails with a network error, the next one is tried before an error is
-shown.
+The station list comes from the "AAC PLS (SSL)" links on
+https://somafm.com/listen/, which SomaFM publishes for media players. When SomaFM
+adds or renames a station, regenerate it and ship a new version:
+
+```bash
+python3 scripts/update-stations.py
+```
+
+The quality setting (Low 32k / Standard 64k / High 128k, Standard by default)
+picks one of the three AAC playlists. The platform player can't read `.pls`
+itself, so the tool resolves it into the mirror URLs (`ice1`, `ice2`, ...). If a
+mirror fails with a network error, the next one is tried before an error is shown.
+
+### Now playing and recently played
+
+SomaFM's play-history feed is part of its closed API, so the tool reads the track
+from the stream itself: Icecast puts a `StreamTitle='Artist - Title'` block into
+the audio every `icy-metaint` bytes. The SDK's audio player doesn't expose those
+blocks, so the station screen makes its own short connection to read one. There's
+no album, and "Recently played" lists only the tracks the tool has seen since you
+tuned in, while a station screen was open. It resets when you tune to a different
+station or the tool's process ends.
+
+## Privacy
+
+The tool has no analytics, no tracking, no ads, and no account. It talks only to
+SomaFM: the requests in the table above go straight from the phone to SomaFM's
+servers, which see your IP address and a `SomaStreamer` user agent, as any
+listener's player would. Nothing else leaves the device. Your favorites, stream
+quality, and last-tuned station are stored locally on the phone.
 
 ## Playback
 
@@ -66,7 +94,7 @@ stale buffer. **Stop** ends the detached session.
 Requires JDK 17 and an Android SDK (`sdk.dir` in `local.properties`).
 
 ```bash
-git clone --recurse-submodules git@github.com:tthayer/light-somafm.git
+git clone --recurse-submodules https://github.com/tthayer/somastreamer.git
 ./gradlew :tool:testDebugUnitTest :tool:assembleDebug
 # → tool/build/outputs/apk/debug/tool-debug.apk
 ```
@@ -88,4 +116,8 @@ git add light-sdk && git commit -m "bump light-sdk to <ref>"
 
 `.github/workflows/release.yml` (inherited from music-app and skylight-app) cuts a
 GitHub Release on every merge to `main`. It derives the version from conventional
-commits and attaches a dev-signed release APK.
+commits and attaches a dev-signed release APK, `somastreamer-<tag>.apk`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
