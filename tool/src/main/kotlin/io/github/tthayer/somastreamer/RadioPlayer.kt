@@ -9,9 +9,10 @@ import com.thelightphone.sdk.audio.LightAudioErrorKind
 import com.thelightphone.sdk.audio.LightAudioItem
 import com.thelightphone.sdk.audio.LightAudioPlayback
 import com.thelightphone.sdk.audio.LightAudioPlayer
+import com.thelightphone.sdk.audio.LightAudioPlayerAvailability
 import com.thelightphone.sdk.audio.LightAudioSource
-import com.thelightphone.sdk.audio.LightAudioUsage
 import com.thelightphone.sdk.audio.LightMediaMetadata
+import com.thelightphone.sdk.audio.LightPlayerSpec
 import com.thelightphone.sdk.audio.NO_MEDIA_ITEM
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -90,7 +91,7 @@ object RadioPlayer {
         if (player != null) return
         dataStore = store
         val engine = try {
-            audio.newPlayer(LightAudioUsage.Music, LightAudioPlayback.Detached)
+            audio.newPlayer(LightPlayerSpec(playback = LightAudioPlayback.Detached))
         } catch (error: Exception) {
             Log.e(TAG, "could not create the detached player", error)
             _state.value = RadioState(status = RadioStatus.Failed("Audio is unavailable."))
@@ -99,7 +100,14 @@ object RadioPlayer {
         player = engine
 
         mirror = scope.launch {
-            if (!engine.awaitReady()) return@launch
+            if (!engine.awaitReady()) {
+                // The connection was refused (or this player was released first).
+                // A refusal is terminal, so surface it instead of sitting idle.
+                if (engine.availability.value == LightAudioPlayerAvailability.Refused) {
+                    _state.value = RadioState(status = RadioStatus.Failed("Audio is unavailable."))
+                }
+                return@launch
+            }
             if (engine.currentMediaItemIndex.value != NO_MEDIA_ITEM && intent.value.station == null) {
                 val tuned = withContext(Dispatchers.IO) { loadTuned(store) }
                 intent.value = Intent(station = tuned, wantsPlay = engine.isPlaying.value)
