@@ -128,21 +128,36 @@ object RadioPlayer {
         if (intent.value.station?.id != channel.id) SongLog.clear(channel.id)
         intent.value = Intent(station = station, wantsPlay = true)
         tuneJob = scope.launch {
-            val playlist = channel.playlistFor(quality)
-            if (playlist == null) {
-                fail("That station has no streams right now.")
-                return@launch
+            if (resolveStreams(engine, channel, station, quality)) {
+                dataStore?.let { store -> withContext(Dispatchers.IO) { saveTuned(store, station) } }
             }
-            val urls = withContext(Dispatchers.IO) { withApi { it.resolveStreams(playlist) } }
-                .getOrElse {
-                    fail(it.message ?: "Could not reach SomaFM.")
-                    return@launch
-                }
-            streams = urls
-            streamIndex = 0
-            queueCurrentStream(engine, station)
-            dataStore?.let { store -> withContext(Dispatchers.IO) { saveTuned(store, station) } }
         }
+    }
+
+    /**
+     * Resolves [channel]'s playlist at [quality] into mirror URLs and queues the
+     * first one. Returns whether a stream was queued.
+     */
+    private suspend fun resolveStreams(
+        engine: LightAudioPlayer,
+        channel: Channel,
+        station: TunedStation,
+        quality: StreamQuality,
+    ): Boolean {
+        val playlist = channel.playlistFor(quality)
+        if (playlist == null) {
+            fail("That station has no streams right now.")
+            return false
+        }
+        val urls = withContext(Dispatchers.IO) { withApi { it.resolveStreams(playlist) } }
+            .getOrElse {
+                fail(it.message ?: "Could not reach SomaFM.")
+                return false
+            }
+        streams = urls
+        streamIndex = 0
+        queueCurrentStream(engine, station)
+        return true
     }
 
     fun togglePlayPause() {
@@ -158,13 +173,30 @@ object RadioPlayer {
         intent.value = want.copy(wantsPlay = true, failure = null)
         if (streams.isNotEmpty()) {
             // Live radio: re-queue rather than resume, so playback rejoins the
-            // live edge instead of replaying a stale buffer.
+            // live edge instead of replaying the paused buffer.
             queueCurrentStream(engine, station)
         } else {
             // A stream inherited from an earlier session: we never resolved its
-            // mirrors, so just resume what the service has queued.
-            engine.play()
+            // mirrors. Re-resolve so we can reconnect fresh (and recover if the
+            // service already stopped the idle session).
+            tuneJob?.cancel()
+            tuneJob = scope.launch { reconnect(engine, station) }
         }
+    }
+
+    /**
+     * Re-resolves [station]'s stream and reconnects it, so a resumed stream
+     * rejoins the live edge instead of a buffer the service kept while paused.
+     * An unknown station falls back to resuming the service's current queue.
+     */
+    private suspend fun reconnect(engine: LightAudioPlayer, station: TunedStation) {
+        val channel = SOMA_STATIONS.firstOrNull { it.id == station.id }
+        if (channel == null) {
+            engine.play()
+            return
+        }
+        val quality = dataStore?.let { withContext(Dispatchers.IO) { loadQuality(it) } } ?: StreamQuality.Default
+        resolveStreams(engine, channel, station, quality)
     }
 
     /** Stops playback and clears the queue, which ends the detached session. */
@@ -198,6 +230,11 @@ object RadioPlayer {
     private fun queueCurrentStream(engine: LightAudioPlayer, station: TunedStation) {
         val url = streams.getOrNull(streamIndex) ?: return
         Log.d(TAG, "tuning ${station.id} via $url")
+        // Stop first. Re-queuing the same URL on a playing or paused player would
+        // otherwise reuse media3's still-buffered period (same media item UID) and
+        // resume from where it left off. Stopping tears that buffer down so the
+        // stream reconnects at the live edge.
+        engine.stop()
         engine.setMediaQueue(
             listOf(
                 LightAudioItem(
