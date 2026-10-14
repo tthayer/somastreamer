@@ -166,7 +166,14 @@ object RadioPlayer {
         val station = want.station ?: return
         if (engine.isPlaying.value || (want.wantsPlay && want.failure == null)) {
             tuneJob?.cancel()
-            engine.pause()
+            // End the detached session instead of leaving it paused: a paused
+            // live stream keeps its connection, its buffer, and the background
+            // service alive until the SDK's idle timeout. The station stays
+            // selected, so play re-tunes it and rejoins the live edge.
+            engine.stop()
+            engine.setMediaQueue(emptyList())
+            streams = emptyList()
+            streamIndex = 0
             intent.update { it.copy(wantsPlay = false) }
             return
         }

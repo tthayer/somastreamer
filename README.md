@@ -87,9 +87,12 @@ quality, and last-tuned station are stored locally on the phone.
 Playback uses the SDK's **detached** audio mode (`capabilities = ["detached-audio"]`
 in `lighttool.toml`), so the stream keeps playing after the tool is closed and shows
 up in the system media controls. When the tool is reopened it reconnects to the
-running session and labels it with the last station it tuned. Pausing and resuming
-re-queues the stream, which puts you back at the live edge instead of replaying a
-stale buffer. **Stop** ends the detached session.
+running session and labels it with the last station it tuned.
+
+**Pause** ends the detached session rather than leaving it paused, so nothing keeps a
+stream connection open in the background; the station stays selected, and playing it
+again re-tunes from the live edge. **Stop** also ends the session and clears the
+selection.
 
 ## Building locally
 
