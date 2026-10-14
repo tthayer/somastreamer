@@ -39,7 +39,8 @@ sealed interface RadioStatus {
     /** Resolving the playlist or buffering the stream. */
     data object Connecting : RadioStatus
     data object Playing : RadioStatus
-    data object Paused : RadioStatus
+    /** Stopped, but the station is still selected so it can be played again. */
+    data object Stopped : RadioStatus
     data class Failed(val message: String) : RadioStatus
 }
 
@@ -160,41 +161,36 @@ object RadioPlayer {
         return true
     }
 
-    fun togglePlayPause() {
+    /**
+     * Plays the selected station, or stops the stream if it's already playing.
+     * Stopping ends the detached session but keeps the station selected, so it
+     * can be played again.
+     */
+    fun togglePlayStop() {
         val engine = player ?: return
         val want = intent.value
         val station = want.station ?: return
         if (engine.isPlaying.value || (want.wantsPlay && want.failure == null)) {
-            tuneJob?.cancel()
-            // End the detached session instead of leaving it paused: a paused
-            // live stream keeps its connection, its buffer, and the background
-            // service alive until the SDK's idle timeout. The station stays
-            // selected, so play re-tunes it and rejoins the live edge.
-            engine.stop()
-            engine.setMediaQueue(emptyList())
-            streams = emptyList()
-            streamIndex = 0
-            intent.update { it.copy(wantsPlay = false) }
+            endSession(engine)
             return
         }
         intent.value = want.copy(wantsPlay = true, failure = null)
         if (streams.isNotEmpty()) {
-            // Live radio: re-queue rather than resume, so playback rejoins the
-            // live edge instead of replaying the paused buffer.
+            // Re-queue so playback starts at the live edge rather than from a
+            // stale buffer.
             queueCurrentStream(engine, station)
         } else {
-            // A stream inherited from an earlier session: we never resolved its
-            // mirrors. Re-resolve so we can reconnect fresh (and recover if the
-            // service already stopped the idle session).
+            // A station from an earlier session with no resolved mirrors:
+            // re-resolve so we can start it fresh.
             tuneJob?.cancel()
             tuneJob = scope.launch { reconnect(engine, station) }
         }
     }
 
     /**
-     * Re-resolves [station]'s stream and reconnects it, so a resumed stream
-     * rejoins the live edge instead of a buffer the service kept while paused.
-     * An unknown station falls back to resuming the service's current queue.
+     * Re-resolves [station]'s stream and reconnects it, so playing it again
+     * starts at the live edge. An unknown station falls back to resuming the
+     * service's current queue.
      */
     private suspend fun reconnect(engine: LightAudioPlayer, station: TunedStation) {
         val channel = SOMA_STATIONS.firstOrNull { it.id == station.id }
@@ -206,21 +202,23 @@ object RadioPlayer {
         resolveStreams(engine, channel, station, quality)
     }
 
-    /** Stops playback and clears the queue, which ends the detached session. */
-    fun stop() {
-        val engine = player ?: return
+    /**
+     * Ends the detached session: stops playback and clears the queue, so no
+     * stream connection or buffer is left behind. The station stays selected so
+     * it can be played again.
+     */
+    private fun endSession(engine: LightAudioPlayer) {
         tuneJob?.cancel()
         engine.stop()
         engine.setMediaQueue(emptyList())
         streams = emptyList()
         streamIndex = 0
-        intent.value = Intent()
-        dataStore?.let { store -> scope.launch(Dispatchers.IO) { saveTuned(store, null) } }
+        intent.update { it.copy(wantsPlay = false) }
     }
 
     /**
      * Disconnects this process from the playback service. Playback itself keeps
-     * going; [stop] first to end it.
+     * going; stop it first with [togglePlayStop] to end it.
      */
     fun release() {
         tuneJob?.cancel()
@@ -237,10 +235,10 @@ object RadioPlayer {
     private fun queueCurrentStream(engine: LightAudioPlayer, station: TunedStation) {
         val url = streams.getOrNull(streamIndex) ?: return
         Log.d(TAG, "tuning ${station.id} via $url")
-        // Stop first. Re-queuing the same URL on a playing or paused player would
-        // otherwise reuse media3's still-buffered period (same media item UID) and
-        // resume from where it left off. Stopping tears that buffer down so the
-        // stream reconnects at the live edge.
+        // Stop first. Re-queuing the same URL on a playing player would otherwise
+        // reuse media3's still-buffered period (same media item UID) and resume
+        // from where it left off. Stopping tears that buffer down so the stream
+        // reconnects at the live edge.
         engine.stop()
         engine.setMediaQueue(
             listOf(
@@ -274,7 +272,7 @@ object RadioPlayer {
         want.failure != null -> RadioStatus.Failed(want.failure)
         isPlaying -> RadioStatus.Playing
         want.wantsPlay && error == null -> RadioStatus.Connecting
-        want.station != null -> RadioStatus.Paused
+        want.station != null -> RadioStatus.Stopped
         else -> RadioStatus.Idle
     }
 

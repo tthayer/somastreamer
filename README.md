@@ -37,10 +37,10 @@ somastreamer/
 | `SomaApi.kt` | Ktor client: `.pls` resolution, and reading the current track from a stream |
 | `SomaStreams.kt` | `.pls` parsing, picking a playlist for a stream quality, parsing ICY titles |
 | `SongLog.kt` | Tracks heard on each station since it was tuned, newest first (in memory) |
-| `RadioPlayer.kt` | Process-level engine over a **detached** `LightAudioPlayer`: tune, pause, stop, mirror fallback |
+| `RadioPlayer.kt` | Process-level engine over a **detached** `LightAudioPlayer`: play/stop, mirror fallback |
 | `HomeScreen.kt` | Entry screen: now playing, favorites, all stations; settings button in the top bar |
 | `SettingsScreen.kt` | Stream quality, and an about line pointing at SomaFM |
-| `StationScreen.kt` | A station: description, current track, play/pause/stop, favorite, recently played |
+| `StationScreen.kt` | A station: description, current track, play/stop, favorite, recently played |
 | `SomaPreferences.kt` | DataStore: quality, favorites, and the last-tuned station |
 
 ## How it uses SomaFM
@@ -89,10 +89,10 @@ in `lighttool.toml`), so the stream keeps playing after the tool is closed and s
 up in the system media controls. When the tool is reopened it reconnects to the
 running session and labels it with the last station it tuned.
 
-**Pause** ends the detached session rather than leaving it paused, so nothing keeps a
-stream connection open in the background; the station stays selected, and playing it
-again re-tunes from the live edge. **Stop** also ends the session and clears the
-selection.
+The station screen's control plays or stops the stream; there is no pause. **Stop**
+ends the detached session, so nothing keeps a stream connection open in the
+background. The station stays selected, and playing it again re-tunes from the live
+edge.
 
 ## Building locally
 

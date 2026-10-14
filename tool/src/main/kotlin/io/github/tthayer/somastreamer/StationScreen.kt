@@ -239,26 +239,19 @@ class StationScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 1f.gridUnitsAsDp()),
-            horizontalArrangement = Arrangement.SpaceEvenly,
+            horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             LightIcon(
-                icon = if (playing) LightIcons.PAUSE else LightIcons.PLAY,
+                icon = if (playing) LightIcons.STOP else LightIcons.PLAY,
                 size = 4f,
                 modifier = Modifier.lightClickable {
                     when {
                         !tunedHere || radio.status is RadioStatus.Failed -> RadioPlayer.play(channel, quality)
-                        else -> RadioPlayer.togglePlayPause()
+                        else -> RadioPlayer.togglePlayStop()
                     }
                 },
             )
-            if (tunedHere) {
-                LightIcon(
-                    icon = LightIcons.STOP,
-                    size = 3f,
-                    modifier = Modifier.lightClickable { RadioPlayer.stop() },
-                )
-            }
         }
         if (tunedHere) {
             radio.status.label().takeIf { it.isNotBlank() }?.let { status ->

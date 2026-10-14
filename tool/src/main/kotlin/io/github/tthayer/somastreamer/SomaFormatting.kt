@@ -20,7 +20,7 @@ internal fun RadioStatus.label(): String = when (this) {
     RadioStatus.Idle -> ""
     RadioStatus.Connecting -> "Tuning in…"
     RadioStatus.Playing -> "Playing"
-    RadioStatus.Paused -> "Paused"
+    RadioStatus.Stopped -> "Stopped"
     is RadioStatus.Failed -> message
 }
 
