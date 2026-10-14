@@ -77,9 +77,22 @@ class StationScreenViewModel(
     }
 
     override fun onScreenHide(screen: SimpleLightScreen<Unit>) {
+        stopPolling()
+        super.onScreenHide(screen)
+    }
+
+    // The SDK only delivers onScreenHide on navigation, not when the app is
+    // backgrounded, so a poll left running here would keep opening stream
+    // connections every 30s while the phone is locked. onResume re-shows the
+    // screen, which restarts the poll.
+    override fun onAppPause() {
+        super.onAppPause()
+        stopPolling()
+    }
+
+    private fun stopPolling() {
         poll?.cancel()
         poll = null
-        super.onScreenHide(screen)
     }
 
     fun toggleFavorite() {
